@@ -43,7 +43,7 @@ def query_knowledge_base(bedrock_client, jd_count, context=None):
         response = bedrock_client.retrieve(
             knowledgeBaseId='2FATY2MKWF',
             retrievalQuery={
-                'text': "Return the job descriptions that match the user's resume",
+                'text': "Return the job descriptions that match the user's resume. <resume>" + context + "</resume>. If there is no match, return 'No matches found.'",
             },
             retrievalConfiguration={
                 'vectorSearchConfiguration': {
