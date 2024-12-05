@@ -15,41 +15,47 @@ def init_bedrock_client():
         return None
 
 def process_file_upload(uploaded_file):
-    if uploaded_file is not None:
-        try:
-            # Read file content
-            content = uploaded_file.read()
-            if uploaded_file.type == "application/pdf":
-                # Handle PDF files using PyPDF2
-                
-                pdf_file = BytesIO(content)
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                
-                # Extract text from all pages
-                text_content = []
-                for page in pdf_reader.pages:
-                    text_content.append(page.extract_text())
-                
-                return "\n".join(text_content)
-            else:
-                # Handle text files
-                return content.decode('utf-8')
-        except Exception as e:
-            st.error(f"Error processing file: {str(e)}")
-            return None
+    if uploaded_file is None:
+        st.error("No file uploaded")
+        return None
+    try:
+        # Read file content
+        content = uploaded_file.read()
+        if uploaded_file.type == "application/pdf":
+            # Handle PDF files using PyPDF2
+            
+            pdf_file = BytesIO(content)
+            pdf_reader = PyPDF2.PdfReader(pdf_file)
+            
+            # Extract text from all pages
+            text_content = []
+            for page in pdf_reader.pages:
+                text_content.append(page.extract_text())
+            
+            return "\n".join(text_content)
+        else:
+            # Handle text files
+            return content.decode('utf-8')
+    except Exception as e:
+        st.error(f"Error processing file: {str(e)}")
+        return None
 
 def query_knowledge_base(bedrock_client, jd_count, context=None):
+    if context is None:
+        st.error("No file provided")
+        return None
+    
     try:
+        prompt = "Return the job descriptions that match the user's resume. <resume>" + context + "</resume>.'"
         response = bedrock_client.retrieve(
             knowledgeBaseId='2FATY2MKWF',
             retrievalQuery={
-                'text': "Return the job descriptions that match the user's resume. <resume>" + context + "</resume>. If there is no match, return 'No matches found.'",
+                'text': prompt,
             },
             retrievalConfiguration={
                 'vectorSearchConfiguration': {
                     'numberOfResults': jd_count,
-                    # Optional: Specify search type if using OpenSearch Serverless
-                    # 'overrideSearchType': 'HYBRID'  # or 'SEMANTIC'
+                    'overrideSearchType': 'SEMANTIC'
                 }
             }
         )
@@ -96,7 +102,7 @@ def main():
             st.success("File uploaded successfully!")
     
     # Query section
-    query = st.number_input("How many job descriptions you want to see:", min_value=1, max_value=10, value=3, step=1)
+    query = st.number_input("How many job descriptions you want to see:", min_value=1, max_value=5, value=3, step=1)
     
     if st.button("Retrive JDs"):
         if query:
@@ -105,12 +111,13 @@ def main():
                 if answer:
                     st.write("Answer:")
                     for idx, result in enumerate(answer, 1):
-                        st.write(f"Result {idx}:")
-                        st.write(f"Score: {result['score']}")
-                        st.write(f"Location: {result['location'].get('s3Location', 'No S3 URL available')}")
-                        with st.expander("Show Content"):
-                            st.write(result['content'])
-                        st.write("---")
+                        if result['score'] > 0.4:
+                            st.write(f"Result {idx}:")
+                            st.write(f"Score: {result['score']}")
+                            st.write(f"Location: {result['location'].get('s3Location', 'No S3 URL available')}")
+                            with st.expander("Show Content"):
+                                st.write(result['content'])
+                            st.write("---")
         else:
             st.warning("Please enter a question.")
 
