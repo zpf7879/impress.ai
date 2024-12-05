@@ -1,9 +1,8 @@
 import streamlit as st
 import boto3
-import json
-from botocore.exceptions import ClientError
+import PyPDF2
+from io import BytesIO
 
-# Configure AWS credentials
 def init_bedrock_client():
     try:
         bedrock = boto3.client(
@@ -22,8 +21,6 @@ def process_file_upload(uploaded_file):
             content = uploaded_file.read()
             if uploaded_file.type == "application/pdf":
                 # Handle PDF files using PyPDF2
-                import PyPDF2
-                from io import BytesIO
                 
                 pdf_file = BytesIO(content)
                 pdf_reader = PyPDF2.PdfReader(pdf_file)
